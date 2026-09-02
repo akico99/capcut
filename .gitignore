@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+uploads/
+.claude/
+
+# 원본/편집 영상 (용량이 커서 git에 안 올림)
+*.mp4
+*.mov

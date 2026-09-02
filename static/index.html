@@ -1,0 +1,771 @@
+<title>캡컷 에이전트</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #161616;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --text: #e8e8e8;
+    --text-dim: #7a7a7a;
+    --text-dimmer: #4a4a4a;
+    --accent: #22c55e;
+    --accent-dim: rgba(34, 197, 94, 0.14);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 64px 24px 96px;
+  }
+
+  header { margin-bottom: 40px; }
+
+  h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+
+  header p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  .dropzone {
+    border: 1px dashed var(--border-strong);
+    border-radius: 8px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .dropzone:hover { border-color: rgba(255, 255, 255, 0.3); }
+
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .dropzone.disabled {
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  .dropzone-title {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .chip-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .chip {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+  }
+
+  input[type="file"] { display: none; }
+
+  .error-line {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+    min-height: 1em;
+  }
+
+  .panel {
+    margin-top: 28px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px 24px;
+    display: none;
+  }
+
+  .panel.visible { display: block; }
+
+  .filename {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    word-break: break-all;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+  }
+
+  .dot {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--text-dimmer);
+    transition: all 0.2s ease;
+  }
+
+  .step.active .dot {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim), 0 0 8px 1px rgba(34, 197, 94, 0.55);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  .step.done .dot {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .step.error .dot {
+    border-color: var(--text-dim);
+    background: transparent;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 3px var(--accent-dim), 0 0 8px 1px rgba(34, 197, 94, 0.55); }
+    50% { box-shadow: 0 0 0 5px var(--accent-dim), 0 0 12px 2px rgba(34, 197, 94, 0.75); }
+  }
+
+  .step-label {
+    flex: 1;
+    color: var(--text-dimmer);
+    font-size: 13px;
+    transition: color 0.2s ease;
+  }
+
+  .step.active .step-label,
+  .step.done .step-label { color: var(--text); }
+
+  .step.error .step-label { color: var(--text-dim); }
+
+  .step-detail {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .stat {
+    text-align: center;
+    padding: 0 8px;
+  }
+
+  .stat + .stat { border-left: 1px solid var(--border); }
+
+  .stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  .stat-label {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .result-note {
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+
+  .result-note .chip { color: var(--accent); border-color: rgba(34, 197, 94, 0.3); }
+
+  /* 구간 선택 */
+  .segment-picker { display: none; margin: 6px 0 20px; }
+  .segment-picker.visible { display: block; }
+
+  .segment-picker-title {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 4px 0 10px;
+  }
+
+  .segment-bulk-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .bulk-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .bulk-btn:hover {
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+
+  .segment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .segment-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .segment-row:hover { border-color: var(--border-strong); }
+
+  .segment-row.selected {
+    border-color: rgba(34, 197, 94, 0.35);
+    background: var(--accent-dim);
+  }
+
+  .segment-thumb {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #000;
+  }
+
+  .segment-info { flex: 1; min-width: 0; }
+
+  .segment-time {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .segment-duration {
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .segment-dot {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    border: 1px solid var(--text-dimmer);
+    background: transparent;
+    transition: all 0.15s ease;
+  }
+
+  .segment-row.selected .segment-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .confirm-btn {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .confirm-btn:hover { background: var(--accent-dim); }
+
+  .confirm-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .remove-btn {
+    flex: none;
+    color: var(--text-dimmer);
+    font-size: 13px;
+    padding: 2px 4px;
+    line-height: 1;
+  }
+
+  .remove-btn:hover { color: var(--text-dim); }
+
+  .manual-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .manual-add input {
+    width: 76px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .manual-add input:focus {
+    outline: none;
+    border-color: var(--border-strong);
+  }
+
+  .manual-add .sep { color: var(--text-dimmer); font-size: 12px; }
+
+  .manual-add .add-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .manual-add .add-btn:hover {
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+
+  .custom-chip {
+    font-size: 10px;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin-left: 6px;
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>캡컷 에이전트</h1>
+    <p>무음 · 잔말 · NG 컷 자동 제거 → CapCut 드래프트</p>
+  </header>
+
+  <div class="dropzone" id="dropzone">
+    <div class="dropzone-title">영상을 끌어다 놓거나 클릭해서 선택하세요</div>
+    <div class="chip-row">
+      <span class="chip">.mp4</span>
+      <span class="chip">.mov</span>
+    </div>
+  </div>
+  <div class="error-line" id="errorLine"></div>
+  <input type="file" id="fileInput" accept=".mp4,.mov,video/mp4,video/quicktime" />
+
+  <div class="panel" id="panel">
+    <div class="filename" id="filename"></div>
+
+    <div class="step" id="step-upload">
+      <span class="dot"></span>
+      <span class="step-label">업로드</span>
+      <span class="step-detail" id="detail-upload"></span>
+    </div>
+    <div class="step" id="step-scene">
+      <span class="dot"></span>
+      <span class="step-label">화면 전환 분석</span>
+      <span class="step-detail" id="detail-scene"></span>
+    </div>
+
+    <div class="segment-picker" id="segmentPicker">
+      <div class="segment-picker-title">쓸 구간을 선택하세요 (기본은 전체 해제)</div>
+      <div class="segment-bulk-actions">
+        <button type="button" class="bulk-btn" id="selectAllBtn">전체 선택</button>
+        <button type="button" class="bulk-btn" id="deselectAllBtn">전체 해제</button>
+      </div>
+      <div class="segment-list" id="segmentList"></div>
+
+      <div class="manual-add">
+        <input type="text" id="manualStart" placeholder="시작(분:초)" inputmode="numeric" />
+        <span class="sep">~</span>
+        <input type="text" id="manualEnd" placeholder="끝(분:초)" inputmode="numeric" />
+        <button type="button" class="add-btn" id="addRangeBtn">구간 직접 추가</button>
+      </div>
+
+      <button class="confirm-btn" id="confirmBtn">선택한 구간으로 편집</button>
+    </div>
+
+    <div class="step" id="step-silence">
+      <span class="dot"></span>
+      <span class="step-label">무음 감지</span>
+      <span class="step-detail" id="detail-silence"></span>
+    </div>
+    <div class="step" id="step-draft">
+      <span class="dot"></span>
+      <span class="step-label">드래프트 생성</span>
+      <span class="step-detail" id="detail-draft"></span>
+    </div>
+
+    <div id="resultBlock" style="display:none">
+      <hr />
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="stat-removed"></div>
+          <div class="stat-label">제거된 시간</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-cuts"></div>
+          <div class="stat-label">컷 수</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-final"></div>
+          <div class="stat-label">최종 길이</div>
+        </div>
+      </div>
+      <div class="result-note">
+        CapCut에서 <span class="chip" id="draftNameChip"></span> 드래프트를 열어
+        직접 재생해서 확인하세요. 스크립트가 끝났다고 결과가 맞다는 뜻은 아닙니다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const dropzone = document.getElementById("dropzone");
+  const fileInput = document.getElementById("fileInput");
+  const errorLine = document.getElementById("errorLine");
+  const panel = document.getElementById("panel");
+  const filenameEl = document.getElementById("filename");
+  const resultBlock = document.getElementById("resultBlock");
+  const segmentPicker = document.getElementById("segmentPicker");
+  const segmentList = document.getElementById("segmentList");
+  const confirmBtn = document.getElementById("confirmBtn");
+  const selectAllBtn = document.getElementById("selectAllBtn");
+  const deselectAllBtn = document.getElementById("deselectAllBtn");
+  const manualStart = document.getElementById("manualStart");
+  const manualEnd = document.getElementById("manualEnd");
+  const addRangeBtn = document.getElementById("addRangeBtn");
+
+  const STEP_ORDER = ["upload", "scene", "silence", "draft"];
+
+  let currentJobId = null;
+  let videoDuration = null;
+  let detectedByIndex = {}; // index -> {start, end}
+  let customRanges = []; // [{id, start, end}] 직접 입력한 구간 (선택 여부는 DOM의 .selected 클래스로 판단)
+  let customIdCounter = 0;
+
+  function parseTimeInput(value) {
+    const str = value.trim();
+    if (str === "") return NaN;
+    if (!str.includes(":")) return parseFloat(str);
+    const parts = str.split(":").map((p) => parseFloat(p));
+    if (parts.some((p) => Number.isNaN(p))) return NaN;
+    return parts.reduce((acc, p) => acc * 60 + p, 0);
+  }
+
+  function formatSeconds(s) {
+    s = Math.max(0, Math.round(s));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${String(r).padStart(2, "0")}`;
+  }
+
+  function setStepState(key, state) {
+    const el = document.getElementById(`step-${key}`);
+    if (!el) return;
+    el.classList.remove("active", "done", "error");
+    if (state) el.classList.add(state);
+  }
+
+  function setStepDetail(key, text) {
+    const el = document.getElementById(`detail-${key}`);
+    if (el) el.textContent = text || "";
+  }
+
+  function resetPanel() {
+    STEP_ORDER.forEach((key) => {
+      setStepState(key, null);
+      setStepDetail(key, "");
+    });
+    resultBlock.style.display = "none";
+    segmentPicker.classList.remove("visible");
+    segmentList.innerHTML = "";
+    detectedByIndex = {};
+    customRanges = [];
+    videoDuration = null;
+    manualStart.value = "";
+    manualEnd.value = "";
+    errorLine.textContent = "";
+  }
+
+  function updateConfirmState() {
+    confirmBtn.disabled = segmentList.querySelectorAll(".segment-row.selected").length === 0;
+  }
+
+  function renderSegments(jobId, segments) {
+    detectedByIndex = {};
+    segments.forEach((seg) => (detectedByIndex[seg.index] = seg));
+
+    segments.forEach((seg) => {
+      const row = document.createElement("div");
+      row.className = "segment-row"; // 기본 미선택 - 필요한 구간만 켜서 쓰게
+      row.dataset.index = seg.index;
+      row.innerHTML = `
+        <span class="segment-dot"></span>
+        <img class="segment-thumb" src="/api/jobs/${jobId}/thumb/${seg.index}" />
+        <div class="segment-info">
+          <div class="segment-time">${formatSeconds(seg.start)} ~ ${formatSeconds(seg.end)}</div>
+          <div class="segment-duration">${formatSeconds(seg.end - seg.start)}</div>
+        </div>
+      `;
+      row.addEventListener("click", () => {
+        row.classList.toggle("selected");
+        updateConfirmState();
+      });
+      segmentList.appendChild(row);
+    });
+
+    segmentPicker.classList.add("visible");
+    updateConfirmState();
+  }
+
+  function addCustomRange(start, end) {
+    const id = `custom-${customIdCounter++}`;
+    customRanges.push({ id, start, end });
+
+    const row = document.createElement("div");
+    row.className = "segment-row selected";
+    row.dataset.customId = id;
+    row.innerHTML = `
+      <span class="segment-dot"></span>
+      <div class="segment-info">
+        <div class="segment-time">${formatSeconds(start)} ~ ${formatSeconds(end)}<span class="custom-chip">직접입력</span></div>
+        <div class="segment-duration">${formatSeconds(end - start)}</div>
+      </div>
+      <span class="remove-btn">✕</span>
+    `;
+    row.addEventListener("click", () => row.classList.toggle("selected"));
+    row.querySelector(".remove-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      customRanges = customRanges.filter((r) => r.id !== id);
+      row.remove();
+      updateConfirmState();
+    });
+    segmentList.appendChild(row);
+    segmentPicker.classList.add("visible");
+    updateConfirmState();
+  }
+
+  function handleEvent(evt) {
+    if (evt.step === "job") {
+      if (evt.status === "done") {
+        resultBlock.style.display = "block";
+        document.getElementById("stat-removed").textContent = formatSeconds(evt.removed_seconds);
+        document.getElementById("stat-cuts").textContent = evt.cut_count;
+        document.getElementById("stat-final").textContent = formatSeconds(evt.kept_seconds);
+        document.getElementById("draftNameChip").textContent = evt.draft_name;
+        dropzone.classList.remove("disabled");
+      } else if (evt.status === "error") {
+        errorLine.textContent = `오류: ${evt.message}`;
+        dropzone.classList.remove("disabled");
+      }
+      // status === "await_selection": 아직 진행 중, dropzone은 계속 잠가둔다.
+      return;
+    }
+
+    if (evt.status === "start") {
+      setStepState(evt.step, "active");
+    } else if (evt.status === "done") {
+      setStepState(evt.step, "done");
+      if (evt.step === "upload") {
+        setStepDetail("upload", formatSeconds(evt.duration));
+        videoDuration = evt.duration;
+      } else if (evt.step === "scene") {
+        setStepDetail("scene", `${evt.segments.length}개 구간`);
+        renderSegments(currentJobId, evt.segments);
+      } else if (evt.step === "silence") {
+        setStepDetail("silence", `${evt.keep_count}개 구간 남김`);
+      } else if (evt.step === "draft") {
+        setStepDetail("draft", "완료");
+      }
+    } else if (evt.status === "error") {
+      setStepState(evt.step, "error");
+      errorLine.textContent = `오류: ${evt.message}`;
+      dropzone.classList.remove("disabled");
+    }
+  }
+
+  function watchEvents(jobId) {
+    const source = new EventSource(`/api/jobs/${jobId}/events`);
+    source.onmessage = (msg) => {
+      const evt = JSON.parse(msg.data);
+      handleEvent(evt);
+      const terminal =
+        (evt.step === "job" && ["done", "error", "await_selection"].includes(evt.status));
+      if (terminal) source.close();
+    };
+    source.onerror = () => source.close();
+  }
+
+  async function uploadFile(file) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["mp4", "mov"].includes(ext)) {
+      errorLine.textContent = "mp4 또는 mov 파일만 지원합니다.";
+      return;
+    }
+
+    dropzone.classList.add("disabled");
+    resetPanel();
+    panel.classList.add("visible");
+    filenameEl.textContent = file.name;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/jobs", { method: "POST", body: formData });
+      if (!res.ok) throw new Error(`업로드 실패 (${res.status})`);
+      const data = await res.json();
+      currentJobId = data.job_id;
+    } catch (err) {
+      errorLine.textContent = `오류: ${err.message}`;
+      dropzone.classList.remove("disabled");
+      return;
+    }
+
+    watchEvents(currentJobId);
+  }
+
+  selectAllBtn.addEventListener("click", () => {
+    segmentList.querySelectorAll(".segment-row").forEach((row) => row.classList.add("selected"));
+    updateConfirmState();
+  });
+
+  deselectAllBtn.addEventListener("click", () => {
+    segmentList.querySelectorAll(".segment-row").forEach((row) => row.classList.remove("selected"));
+    updateConfirmState();
+  });
+
+  addRangeBtn.addEventListener("click", () => {
+    const start = parseTimeInput(manualStart.value);
+    const end = parseTimeInput(manualEnd.value);
+    if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+      errorLine.textContent = "시작보다 큰 끝을 입력하세요 (예: 1:30, 또는 초 단위 90).";
+      return;
+    }
+    if (videoDuration !== null && (start < 0 || end > videoDuration)) {
+      errorLine.textContent = `구간은 0 ~ ${formatSeconds(videoDuration)} 사이여야 합니다.`;
+      return;
+    }
+    errorLine.textContent = "";
+    addCustomRange(start, end);
+    manualStart.value = "";
+    manualEnd.value = "";
+  });
+
+  function collectSelectedRanges() {
+    const ranges = [];
+    segmentList.querySelectorAll(".segment-row.selected").forEach((row) => {
+      if (row.dataset.index !== undefined) {
+        const seg = detectedByIndex[row.dataset.index];
+        ranges.push([seg.start, seg.end]);
+      } else if (row.dataset.customId !== undefined) {
+        const custom = customRanges.find((r) => r.id === row.dataset.customId);
+        if (custom) ranges.push([custom.start, custom.end]);
+      }
+    });
+    return ranges;
+  }
+
+  confirmBtn.addEventListener("click", async () => {
+    const ranges = collectSelectedRanges();
+    if (!currentJobId || ranges.length === 0) return;
+    confirmBtn.disabled = true;
+
+    try {
+      const res = await fetch(`/api/jobs/${currentJobId}/segments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ranges }),
+      });
+      if (!res.ok) throw new Error(`요청 실패 (${res.status})`);
+    } catch (err) {
+      errorLine.textContent = `오류: ${err.message}`;
+      dropzone.classList.remove("disabled");
+      confirmBtn.disabled = false;
+      return;
+    }
+
+    segmentPicker.classList.remove("visible");
+    watchEvents(currentJobId);
+  });
+
+  dropzone.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) uploadFile(fileInput.files[0]);
+    fileInput.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach((evtName) =>
+    dropzone.addEventListener(evtName, (e) => {
+      e.preventDefault();
+      dropzone.classList.add("dragover");
+    })
+  );
+  ["dragleave", "drop"].forEach((evtName) =>
+    dropzone.addEventListener(evtName, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("dragover");
+    })
+  );
+  dropzone.addEventListener("drop", (e) => {
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  });
+</script>
