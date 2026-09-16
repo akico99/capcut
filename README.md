@@ -82,3 +82,30 @@ winget 설치 경로를 직접 뒤지는 fallback이 들어있다. 터미널을 
 - 무음 감지 임계값처럼 "정답이 코드로 판단 안 되는" 튜닝 값은, 실행해보고 사용자 피드백을
   받아 조정하는 루프로 다룬다. 값을 임의로 정하고 넘어가지 않는다.
 - 이 폴더에 테스트용 원본 영상을 넣어두면(`촬영본.mov`처럼) 그걸로 각 단계를 바로 검증한다.
+
+## 에이전트 모드 (2026-09 추가) — 링크/편집본 → CapCut 드래프트
+
+cut_sim(`silence_core.py` / `link_to_capcut.py`)을 AGENT_INTERFACE.md대로 래핑한 진입점. 자세한 설치는 `SETUP.md`.
+
+```powershell
+$PY = "C:\Users\leeyongsoo\AppData\Local\Programs\Python\Python310\python.exe"
+& $PY run_pipeline.py --request request.json --out-json result.json
+```
+
+`request.json` 두 가지 형태:
+
+```jsonc
+// A) 링크 + 타임라인 구간 → 무음컷(+장면분할)
+{ "source": "https://www.youtube.com/watch?v=XXXX",
+  "segments": [ {"start": "0:50", "end": "2:04"} ],      // [] = 전체
+  "options": { "scene_split": true }, "project_name": "영상1" }
+
+// B) 편집본 + 원본 → 편집본이 쓴 원본 구간을 오디오 매칭으로 자동 추출 (audio_match.py)
+{ "source": "원본.mp4 또는 링크", "edited": "편집본.mp4", "project_name": "영상2" }
+```
+
+- stdout에 `RESULT_JSON:{...}` 한 줄, stderr에 로그. exit 0 / 1(재시도 가능) / 2(불가).
+- B는 배속(1.2x 등)을 자동 판별해 클립 speed로 그대로 적용하고, 무음컷은 생략(`silence_cut: false`).
+  `cuts[].reason`이 `audio_match_low_confidence`인 클립과 `audio_match.unmatched` 구간은 CapCut에서 직접 확인.
+- 같은 링크는 `download_cache.json`으로 재사용, 같은 프로젝트명은 `_v2`로 증가(`on_duplicate`).
+- 단독 실행: `& $PY audio_match.py 편집본.mp4 원본.mp4` (JSON 출력), `--emit-request req.json`으로 A형 요청 생성.
