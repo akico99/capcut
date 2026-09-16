@@ -52,7 +52,7 @@ DEFAULT_OPTIONS = {
 # 마지막 구간 끝을 이만큼 당긴다 (pycapcut 소재 길이가 ffprobe와 수십ms 다를 수 있음)
 TAIL_TRIM_SEC = 0.05
 # 장면전환 threshold가 낮아 과분할됐다고 경고할 기준 (분당 클립 수)
-OVERSPLIT_CLIPS_PER_MIN = 20
+OVERSPLIT_CLIPS_PER_MIN = 40
 
 _TS_RE = re.compile(r"^(\d+:)?(\d+:)?\d+(\.\d+)?$")
 

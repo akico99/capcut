@@ -104,7 +104,8 @@ def run_with_audio_match(source, edited, options, project_name, draft_folder, wo
     segments = [{"start": s["start"], "end": s["end"],
                  "reason": "audio_match_low_confidence" if s["low_confidence"] else "audio_match"}
                 for s in m["segments"]]
-    opts = {"silence_cut": False, "speed": m["speed"], **options}
+    # 편집본은 이미 컷된 상태이므로 무음컷은 끄고, 매칭 구간 안에서 장면전환 분할은 기본으로 켠다
+    opts = {"silence_cut": False, "scene_split": True, "speed": m["speed"], **options}
     result = ltc.run(str(local), segments, opts, project_name, draft_folder=draft_folder, work_dir=work_dir)
     result["cache_hit"] = cache_hit
     result["audio_match"] = {"speed": m["speed"], "coverage": m["coverage"], "unmatched": m["unmatched"],
