@@ -9,7 +9,7 @@ request.json:
   {
     "source": "https://www.youtube.com/watch?v=XXXX"  또는 로컬 파일 경로,
     "segments": [ {"start": "0:50", "end": "2:04"}, ... ],   # [] = 전체
-    "edited": "편집본.mp4",      # (선택) 있으면 오디오 매칭으로 segments를 자동 계산 (segments는 [] 또는 생략)
+    "edited": "편집본.mp4 또는 링크",  # (선택) 있으면 오디오 매칭으로 segments를 자동 계산 (segments는 [] 또는 생략)
     "options": { "scene_split": true, "scene_threshold": 10, "noise_db": -23,
                  "min_silence": 0.35, "pad": 0.12, "on_duplicate": "increment" },
     "project_name": "영상1"
@@ -97,11 +97,8 @@ def parse_request(req):
 def run_with_audio_match(source, edited, options, project_name, draft_folder, work_dir):
     """편집본 오디오로 원본 구간을 찾은 뒤 그 segments로 파이프라인 실행."""
     import audio_match
-    edited_path = Path(edited)
-    if not edited_path.is_absolute():
-        edited_path = Path(work_dir) / edited_path
-    if not edited_path.exists():
-        raise PipelineError("SOURCE_NOT_FOUND", f"편집본 파일을 찾을 수 없습니다: {edited_path}")
+    # 편집본도 유튜브 링크(쇼츠 등)일 수 있으므로 원본과 같은 캐시/다운로드 경로를 탄다
+    edited_path, _, _ = ltc.resolve_source(edited, Path(work_dir))
     local, _, cache_hit = ltc.resolve_source(source, Path(work_dir))
     m = audio_match.match(edited_path, local)
     segments = [{"start": s["start"], "end": s["end"],

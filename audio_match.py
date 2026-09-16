@@ -41,6 +41,7 @@ LOW_CONF = 0.35          # 이 미만이면 low_confidence 표시
 MIN_MARGIN = 0.05        # 1위-2위 피크 차이가 이보다 작으면 "매칭 안 됨"으로 간주
 LOW_MARGIN = 0.10        # 이 미만이면 low_confidence
 DEFAULT_SPEEDS = [1.0, 1.1, 1.15, 1.2, 1.25, 1.3, 1.5]
+ENERGY_FLOOR_RATIO = 0.05  # 창 에너지가 중앙값의 5% 미만이면 무음으로 간주
 
 
 # ---------------------------------------------------------------------------
@@ -129,8 +130,15 @@ class Matcher:
             return 0, 0.0, 0.0
         num = corr[Lw - 1: Lw - 1 + valid]
         e_o = self.e_cum[Lw:Lw + valid] - self.e_cum[:valid]
-        denom = np.sqrt(np.maximum(e_o, 1e-6)) * np.sqrt(np.sum(win ** 2) + 1e-6)
+        # 디지털 무음(에너지≈0) 구간은 분모가 부동소수점 노이즈 수준이 되어 NCC가 폭발한다.
+        # 에너지 하한을 전체 중앙값의 일부로 두고, 그 이하인 위치는 후보에서 제외한다.
+        floor = ENERGY_FLOOR_RATIO * float(np.median(e_o))
+        e_w = float(np.sum(win ** 2))
+        if e_w < floor:                     # 편집본 창 자체가 무음이면 매칭 불가
+            return 0, 0.0, 0.0
+        denom = np.sqrt(np.maximum(e_o, floor)) * np.sqrt(e_w)
         ncc = num / denom
+        ncc[e_o < floor] = 0.0
         best = int(np.argmax(ncc))
         # 2위 피크 (1위 주변 ±1초 제외)
         mask = np.ones(valid, dtype=bool)
