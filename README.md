@@ -109,3 +109,11 @@ $PY = "C:\Users\leeyongsoo\AppData\Local\Programs\Python\Python310\python.exe"
   `cuts[].reason`이 `audio_match_low_confidence`인 클립과 `audio_match.unmatched` 구간은 CapCut에서 직접 확인.
 - 같은 링크는 `download_cache.json`으로 재사용, 같은 프로젝트명은 `_v2`로 증가(`on_duplicate`).
 - 단독 실행: `& $PY audio_match.py 편집본.mp4 원본.mp4` (JSON 출력), `--emit-request req.json`으로 A형 요청 생성.
+
+### 자막 워크플로우 (드래프트에 번호 자리만, 문구는 텍스트로)
+
+- 드래프트 생성 시 클립마다 하단에 `n-k`(영상 번호-클립 번호) 텍스트 자리가 자동으로 들어감
+  (`options.caption_placeholders`, 스타일은 주의사항 3번 기준 흰색/크기10/하단. 글꼴은 CapCut에서 코트라 볼드로).
+- `caption_sheet.py --result result.json --out sheets/영상2` → 클립별 프레임 3장 + Whisper 대사 시트.
+  에이전트가 시트를 보고 하단 자막(예능 3인칭 내레이션) + 상단 후킹 제목 후보를 `자막/*.md`로 출력.
+- 사용자가 텍스트를 골라 CapCut에서 `n-k` 자리에 붙여넣기.

@@ -47,7 +47,11 @@ DEFAULT_OPTIONS = {
     "on_duplicate": "increment",   # "increment" | "overwrite"
     "silence_cut": True,           # False면 무음 감지 없이 segments만 그대로 클립으로
     "speed": 1.0,                  # 클립 재생 속도 (편집본 매칭 시 판별된 배속을 그대로 적용)
+    "caption_placeholders": True,  # 클립마다 하단에 "n-k" 번호 자막 자리를 넣어둔다 (CapCut에서 텍스트만 교체)
+    "caption_prefix": None,        # "n-k"의 n. None이면 project_name 끝 숫자(영상3 → 3), 없으면 1
 }
+# 자막 자리 스타일 — "캡컷 작업시 주의사항.txt" 3번 기준 (흰색 / 크기 10 / 하단). 글꼴은 CapCut에서 코트라 볼드로 교체.
+CAPTION_STYLE = {"size": 10.0, "color": (1.0, 1.0, 1.0), "bold": True, "transform_y": -0.8}
 
 # 마지막 구간 끝을 이만큼 당긴다 (pycapcut 소재 길이가 ffprobe와 수십ms 다를 수 있음)
 TAIL_TRIM_SEC = 0.05
@@ -316,10 +320,15 @@ def run(source, segments=None, options=None, project_name=None,
         final_name = base_name
     log.info("[4/4] CapCut 프로젝트 생성 중: %s", final_name)
 
+    placeholders = []
     try:
         df = cc.DraftFolder(draft_folder)
         script = df.create_draft(final_name, width, height, round(fps), allow_replace=True)
         script.add_track(cc.TrackType.video, "video_1")
+        if opts["caption_placeholders"]:
+            script.add_track(cc.TrackType.text, "caption")
+            m = re.search(r"(\d+)\s*$", project_name or "")
+            cap_prefix = str(opts["caption_prefix"] or (m.group(1) if m else 1))
 
         # 마이크로초 정수로 계산해야 경계가 정확히 맞물린다 (아니면 SegmentOverlap)
         cursor_us = 0
@@ -334,6 +343,17 @@ def run(source, segments=None, options=None, project_name=None,
                                   source_timerange=cc.trange(src_us, dur_us),
                                   speed=speed if speed != 1.0 else None)
             script.add_segment(seg, "video_1")
+            if opts["caption_placeholders"]:
+                label = f"{cap_prefix}-{len(placeholders) + 1}"
+                txt = cc.TextSegment(
+                    label, cc.trange(cursor_us, target_us),
+                    style=cc.TextStyle(size=CAPTION_STYLE["size"], color=CAPTION_STYLE["color"],
+                                       bold=CAPTION_STYLE["bold"], align=1),
+                    clip_settings=cc.ClipSettings(transform_y=CAPTION_STYLE["transform_y"]),
+                )
+                script.add_segment(txt, "caption")
+                placeholders.append({"label": label, "in": round(c["in"], 3), "out": round(c["out"], 3),
+                                     "timeline_start": round(cursor_us / 1e6, 2)})
             cursor_us += target_us
         script.save()
     except PermissionError as e:
@@ -363,6 +383,7 @@ def run(source, segments=None, options=None, project_name=None,
         "total_duration_sec": round(cursor_us / 1e6, 2),
         "removed_sec": round(total_in - total_out, 2),
         "cuts": [{"in": round(c["in"], 3), "out": round(c["out"], 3), "reason": c["reason"]} for c in cuts],
+        "caption_placeholders": placeholders,
         "warnings": warnings,
     }
 
