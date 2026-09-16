@@ -49,6 +49,7 @@ DEFAULT_OPTIONS = {
     "speed": 1.0,                  # 클립 재생 속도 (편집본 매칭 시 판별된 배속을 그대로 적용)
     "caption_placeholders": True,  # 클립마다 하단에 "n-k" 번호 자막 자리를 넣어둔다 (CapCut에서 텍스트만 교체)
     "caption_prefix": None,        # "n-k"의 n. None이면 project_name 끝 숫자(영상3 → 3), 없으면 1
+    "caption_groups": None,        # 자막 자리를 컷 묶음 단위로: [[1,2],[3,4],[5]] (1-based 컷 번호). None이면 컷마다 1개
 }
 # 자막 자리 스타일 — "캡컷 작업시 주의사항.txt" 3번 기준 (흰색 / 크기 10 / 하단). 글꼴은 CapCut에서 코트라 볼드로 교체.
 CAPTION_STYLE = {"size": 10.0, "color": (1.0, 1.0, 1.0), "bold": True, "transform_y": -0.8}
@@ -320,7 +321,7 @@ def run(source, segments=None, options=None, project_name=None,
         final_name = base_name
     log.info("[4/4] CapCut 프로젝트 생성 중: %s", final_name)
 
-    placeholders = []
+    placeholders, clip_spans = [], []
     try:
         df = cc.DraftFolder(draft_folder)
         script = df.create_draft(final_name, width, height, round(fps), allow_replace=True)
@@ -343,18 +344,30 @@ def run(source, segments=None, options=None, project_name=None,
                                   source_timerange=cc.trange(src_us, dur_us),
                                   speed=speed if speed != 1.0 else None)
             script.add_segment(seg, "video_1")
-            if opts["caption_placeholders"]:
-                label = f"{cap_prefix}-{len(placeholders) + 1}"
+            clip_spans.append((cursor_us, target_us, c))
+            cursor_us += target_us
+
+        if opts["caption_placeholders"]:
+            groups = opts["caption_groups"] or [[i] for i in range(1, len(clip_spans) + 1)]
+            for gi, g in enumerate(groups, 1):
+                idx = sorted(int(x) for x in g)
+                if not idx or idx[0] < 1 or idx[-1] > len(clip_spans):
+                    raise PipelineError("INVALID_REQUEST", f"caption_groups 컷 번호 범위 오류: {g} (컷 1~{len(clip_spans)})")
+                start_us = clip_spans[idx[0] - 1][0]
+                end_us = clip_spans[idx[-1] - 1][0] + clip_spans[idx[-1] - 1][1]
+                label = f"{cap_prefix}-{gi}"
                 txt = cc.TextSegment(
-                    label, cc.trange(cursor_us, target_us),
+                    label, cc.trange(start_us, end_us - start_us),
                     style=cc.TextStyle(size=CAPTION_STYLE["size"], color=CAPTION_STYLE["color"],
                                        bold=CAPTION_STYLE["bold"], align=1),
                     clip_settings=cc.ClipSettings(transform_y=CAPTION_STYLE["transform_y"]),
                 )
                 script.add_segment(txt, "caption")
-                placeholders.append({"label": label, "in": round(c["in"], 3), "out": round(c["out"], 3),
-                                     "timeline_start": round(cursor_us / 1e6, 2)})
-            cursor_us += target_us
+                placeholders.append({"label": label, "clips": idx,
+                                     "in": round(clip_spans[idx[0] - 1][2]["in"], 3),
+                                     "out": round(clip_spans[idx[-1] - 1][2]["out"], 3),
+                                     "timeline_start": round(start_us / 1e6, 2),
+                                     "timeline_end": round(end_us / 1e6, 2)})
         script.save()
     except PermissionError as e:
         raise PipelineError("DRAFT_LOCKED", f"드래프트 폴더에 쓸 수 없습니다 (CapCut이 열어둔 상태?): {e}",

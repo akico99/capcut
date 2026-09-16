@@ -86,7 +86,10 @@ def main():
              "- 각 행: 클립 번호 / 원본 시간 / 길이 / 대사(Whisper) / 프레임 이미지", ""]
     timeline = 0.0
     speed = float(r.get("speed", 1.0))
-    labels = {i + 1: p["label"] for i, p in enumerate(r.get("caption_placeholders", []))}
+    labels = {}
+    for ph in r.get("caption_placeholders", []):
+        for ci in ph.get("clips", [len(labels) + 1]):
+            labels[ci] = ph["label"]
     for i, c in enumerate(cuts, 1):
         t_in, t_out = c["in"], c["out"]
         dur = t_out - t_in
