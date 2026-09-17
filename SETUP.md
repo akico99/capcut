@@ -22,7 +22,8 @@ CapCut에서 바로 열리는 프로젝트(드래프트)로 생성해주는 로�
    (`pycapcut`, `numpy`, `faster-whisper`. Whisper 모델(medium, 약 1.5GB)은 첫 실행 때 자동 다운로드)
 4. 그 폴더에서 Claude Code 세션 열기. `CLAUDE.md` → `STYLE_GUIDE.md` / `SETUP.md` / `AGENT_INTERFACE.md`가
    에이전트 규칙을 담고 있으므로 별도 설정 없이 "편:링크 / 원:링크" 형식으로 요청하면 된다.
-5. 확인: 로컬 파일 하나로 `run_pipeline.py`를 돌려 CapCut에 드래프트가 뜨는지 본다.
+5. **`python check_env.py`** 로 설치 현황 점검 (Python 3.10 / ffmpeg / yt-dlp / pycapcut / numpy / faster-whisper / CapCut 폴더).
+   에이전트는 새 PC에서 첫 작업 전에 이걸 먼저 돌리고, 미설치 항목이 있으면 안내 후 진행한다.
 
 주의: `download_cache.json`과 다운로드된 `영상_*.mp4`는 PC별 산출물이라 git에 안 올라감. `자막/`은 올라감.
 
