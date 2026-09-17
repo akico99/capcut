@@ -1,3 +1,7 @@
 pycapcut
 numpy
 faster-whisper
+# server.py (웹 UI, 선택)
+fastapi
+uvicorn[standard]
+python-multipart

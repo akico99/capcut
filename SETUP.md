@@ -9,6 +9,25 @@ CapCut에서 바로 열리는 프로젝트(드래프트)로 생성해주는 로�
 
 ---
 
+## 0. 새 PC에 옮기기 (요약 — 2026-09-18 기준)
+
+이 레포(`github.com/akico99/capcut`)는 사용자명·경로에 의존하지 않는다. 아래만 하면 된다.
+
+1. CapCut 데스크톱 설치 후 1회 실행 (드래프트 폴더 생성)
+2. Python 3.10 설치 → `winget install Gyan.FFmpeg`, `winget install yt-dlp.yt-dlp`
+3. 레포 클론 후:
+   ```powershell
+   C:\Users\<user>\AppData\Local\Programs\Python\Python310\python.exe -m pip install -r requirements.txt
+   ```
+   (`pycapcut`, `numpy`, `faster-whisper`. Whisper 모델(medium, 약 1.5GB)은 첫 실행 때 자동 다운로드)
+4. 그 폴더에서 Claude Code 세션 열기. `CLAUDE.md` → `STYLE_GUIDE.md` / `SETUP.md` / `AGENT_INTERFACE.md`가
+   에이전트 규칙을 담고 있으므로 별도 설정 없이 "편:링크 / 원:링크" 형식으로 요청하면 된다.
+5. 확인: 로컬 파일 하나로 `run_pipeline.py`를 돌려 CapCut에 드래프트가 뜨는지 본다.
+
+주의: `download_cache.json`과 다운로드된 `영상_*.mp4`는 PC별 산출물이라 git에 안 올라감. `자막/`은 올라감.
+
+---
+
 ## 1. 요구 사항
 
 - Windows 10/11
